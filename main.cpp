@@ -51,11 +51,11 @@ bool serialPortConfig(){
     }
 
     dcb.DCBlength = sizeof(dcb);
-    dcb.BaudRate = CBR_2400;
+    dcb.BaudRate = CBR_256000;
     dcb.fParity = FALSE;
     dcb.Parity = 2;
     dcb.StopBits = ONESTOPBIT;
-    dcb.ByteSize = 4;
+    dcb.ByteSize = 8;
     dcb.fDtrControl = DTR_CONTROL_ENABLE;
 
     SetCommState(handle, &dcb);
@@ -88,11 +88,12 @@ bool sendString(){
     char bufferOut[1024] = {0};
 
     cout << "Podaj tekst do wyslania: ";
-
+    cin.ignore();
+    cin.getline(bufferIn, sizeof(bufferIn));
 
 
     if(writeSerialPort(bufferIn, strlen(bufferIn))){
-        cout << "Pomyslnie wyslano ciag znakow" << endl;
+        cout << "Rozpoczeto przesywanie ciagu znakow..." << endl;
     }else {
         cout << "Blad w przeslaniu znakow" << endl;
         return false;
@@ -100,6 +101,7 @@ bool sendString(){
 
     if(readSerialPort(bufferOut, strlen(bufferIn))){
         bufferOut[sizeof(bufferOut) - 1] = '\0';
+        cout << "Zakonczono odczyt ciagu znakow." << endl;
         cout << "Odczytany tekst: " << bufferOut << endl;
     }else {
         cout << "Blad w odczytaniu tekstu" << endl;
@@ -114,7 +116,7 @@ bool sendFile(){
     FILE * file;
     FILE * destFile;
 
-    const long buffSize = 60000;
+    const long buffSize = 16384;
 
     char bufferIn[buffSize] = {0};
     char bufferOut[buffSize] = {0};
@@ -141,17 +143,30 @@ bool sendFile(){
         return false;
     }
 
-    while (fread(bufferIn, 1, sizeof(bufferIn), file)) {
-        //cout << bufferIn;
-        writeSerialPort(bufferIn, strlen(bufferIn));
+    cout << "Rozpoczeto przesylanie pliku..." << endl;
+    fseek(file,0,SEEK_END);
+    long currentSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
 
-        int bytesRead = readSerialPort(bufferOut, sizeof(bufferOut));
-        if (bytesRead > 0) {
-            bufferOut[bytesRead] = '\0';
-            fwrite(bufferIn, buffSize, 1, destFile);
+//    cout << "Rozmiar pliku: " << size << endl;
+
+    while(currentSize > 0){
+        long bytesToRead = min(buffSize, currentSize);
+        fread(bufferIn, 1,bytesToRead, file);
+        writeSerialPort(bufferIn, bytesToRead);
+
+        // Odbiór danych
+        if (readSerialPort(bufferOut, bytesToRead) == 0) {
+            std::cout << "Blad w odbiorze danych!" << std::endl;
+            break;
         }
 
+        // Zapis do pliku docelowego
+        fwrite(bufferOut, 1,bytesToRead, destFile);
+        currentSize -= bytesToRead;
     }
+
+    cout << "Zakonczono przesylanie pliku." << endl;
 
     fclose(file);
     fclose(destFile);
@@ -161,27 +176,24 @@ bool sendFile(){
 }
 
 int main() {
-    //C:\Users\student\Desktop
 
-    openSerialPort("COM3");
-    dcb.DCBlength = sizeof(dcb);
+    char port[64] = {0};
+    cout << "Podaj port: ";
+    cin >> port;
+
+    if(!openSerialPort(port)){
+        return 0;
+    };
+
     GetCommState(handle, &dcb);
 
-    dcb.BaudRate = CBR_115200;
-    dcb.fParity = FALSE;
-    dcb.Parity = 2; // Upewnij się, że to jest poprawne dla twojego urządzenia
-    dcb.StopBits = ONESTOPBIT;
-    dcb.ByteSize = 8;
-    dcb.fDtrControl = DTR_CONTROL_ENABLE;
+    serialPortConfig();
 
     SetCommState(handle, &dcb);
 
     GetCommTimeouts(handle, &commTimeouts);
-    commTimeouts.ReadTotalTimeoutConstant = 500; // Ustawienie timeoutów
-    commTimeouts.WriteTotalTimeoutConstant = 500;
+    setTimeoutsConfig(0,0,1000,0,0);
     SetCommTimeouts(handle, &commTimeouts);
-    //serialPortConfig();
-    //setTimeoutsConfig(0,0,0,0,0);
 
     cout << "Wybierz opcje: " << endl;
     cout << "1. Przeslanie ciagu znakow" << endl;
@@ -199,6 +211,9 @@ int main() {
     }else {
         cout << "Bledna opcja." << endl;
     }
+
+    std::cout << "Nacisnij Enter, aby zamknac program..." << std::endl;
+    std::cin.get();
 
     return 0;
 }
