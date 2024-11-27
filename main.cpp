@@ -116,7 +116,7 @@ bool sendFile(){
     FILE * file;
     FILE * destFile;
 
-    const long buffSize = 16384;
+    const long buffSize = 2048;
 
     char bufferIn[buffSize] = {0};
     char bufferOut[buffSize] = {0};
@@ -145,25 +145,27 @@ bool sendFile(){
 
     cout << "Rozpoczeto przesylanie pliku..." << endl;
     fseek(file,0,SEEK_END);
-    long currentSize = ftell(file);
+    long totalSize = ftell(file);
     fseek(file, 0, SEEK_SET);
+
+    long currentSize = 0;
 
 //    cout << "Rozmiar pliku: " << size << endl;
 
-    while(currentSize > 0){
-        long bytesToRead = min(buffSize, currentSize);
+    while(currentSize <= totalSize){
+        long bytesToRead = min(buffSize, totalSize - currentSize);
         fread(bufferIn, 1,bytesToRead, file);
         writeSerialPort(bufferIn, bytesToRead);
 
         // Odbiór danych
         if (readSerialPort(bufferOut, bytesToRead) == 0) {
-            std::cout << "Blad w odbiorze danych!" << std::endl;
             break;
         }
 
         // Zapis do pliku docelowego
         fwrite(bufferOut, 1,bytesToRead, destFile);
-        currentSize -= bytesToRead;
+        currentSize += bytesToRead;
+        cout << "Przeslano: " << currentSize << " z " << totalSize << " bajtow." << endl;
     }
 
     cout << "Zakonczono przesylanie pliku." << endl;
@@ -181,36 +183,61 @@ int main() {
     cout << "Podaj port: ";
     cin >> port;
 
-    if(!openSerialPort(port)){
-        return 0;
+    if(openSerialPort(port)){
+        GetCommState(handle, &dcb);
+
+        serialPortConfig();
+
+        SetCommState(handle, &dcb);
+
+        GetCommTimeouts(handle, &commTimeouts);
+        setTimeoutsConfig(0,0,1000,0,0);
+        SetCommTimeouts(handle, &commTimeouts);
+
+        cout << "Wybierz opcje: " << endl;
+        cout << "1. Przeslanie ciagu znakow" << endl;
+        cout << "2. Przeslanie pliku" << endl;
+
+        int option;
+        cout << "Wybierz opcje: ";
+        cin >> option;
+        cout << "" << endl;
+
+        if(option == 1){
+            sendString();
+        }else if(option == 2){
+            sendFile();
+        }else {
+            cout << "Bledna opcja." << endl;
+        }
     };
 
-    GetCommState(handle, &dcb);
-
-    serialPortConfig();
-
-    SetCommState(handle, &dcb);
-
-    GetCommTimeouts(handle, &commTimeouts);
-    setTimeoutsConfig(0,0,1000,0,0);
-    SetCommTimeouts(handle, &commTimeouts);
-
-    cout << "Wybierz opcje: " << endl;
-    cout << "1. Przeslanie ciagu znakow" << endl;
-    cout << "2. Przeslanie pliku" << endl;
-
-    int option;
-    cout << "Wybierz opcje: ";
-    cin >> option;
-    cout << "" << endl;
-
-    if(option == 1){
-        sendString();
-    }else if(option == 2){
-        sendFile();
-    }else {
-        cout << "Bledna opcja." << endl;
-    }
+//    GetCommState(handle, &dcb);
+//
+//    serialPortConfig();
+//
+//    SetCommState(handle, &dcb);
+//
+//    GetCommTimeouts(handle, &commTimeouts);
+//    setTimeoutsConfig(0,0,1000,0,0);
+//    SetCommTimeouts(handle, &commTimeouts);
+//
+//    cout << "Wybierz opcje: " << endl;
+//    cout << "1. Przeslanie ciagu znakow" << endl;
+//    cout << "2. Przeslanie pliku" << endl;
+//
+//    int option;
+//    cout << "Wybierz opcje: ";
+//    cin >> option;
+//    cout << "" << endl;
+//
+//    if(option == 1){
+//        sendString();
+//    }else if(option == 2){
+//        sendFile();
+//    }else {
+//        cout << "Bledna opcja." << endl;
+//    }
 
     std::cout << "Nacisnij Enter, aby zamknac program..." << std::endl;
     std::cin.get();
