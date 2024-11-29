@@ -212,33 +212,6 @@ int main() {
         }
     };
 
-//    GetCommState(handle, &dcb);
-//
-//    serialPortConfig();
-//
-//    SetCommState(handle, &dcb);
-//
-//    GetCommTimeouts(handle, &commTimeouts);
-//    setTimeoutsConfig(0,0,1000,0,0);
-//    SetCommTimeouts(handle, &commTimeouts);
-//
-//    cout << "Wybierz opcje: " << endl;
-//    cout << "1. Przeslanie ciagu znakow" << endl;
-//    cout << "2. Przeslanie pliku" << endl;
-//
-//    int option;
-//    cout << "Wybierz opcje: ";
-//    cin >> option;
-//    cout << "" << endl;
-//
-//    if(option == 1){
-//        sendString();
-//    }else if(option == 2){
-//        sendFile();
-//    }else {
-//        cout << "Bledna opcja." << endl;
-//    }
-
     std::cout << "Nacisnij Enter, aby zamknac program..." << std::endl;
     std::cin.get();
 
